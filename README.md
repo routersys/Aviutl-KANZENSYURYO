@@ -18,7 +18,7 @@ Aviutlをプロセスが残らないように、完全に終了させるため�
 
 1.  GitHubのReleasesページから最新版の`.zip`ファイルをダウンロードします。
 2.  ダウンロードしたzipファイルを解凍します。
-3.  中の**`KanzenShuryo.auf`**と**`KanzenShuryoHelper.exe`**の2つのファイルを、Aviutlの`plugins`フォルダにコピーしてください。
+3.  中の`KanzenShuryo.auf`と`KanzenShuryoHelper.exe`の2つのファイルを、Aviutlの`plugins`フォルダにコピーしてください。
 
 ## 使用方法
 
