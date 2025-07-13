@@ -1,4 +1,4 @@
-# Aviutl-KANZENSYURYO
+# Aviutl-Kanzenshuryo
 Aviutlで完全終了するプラグインです。
 Aviutlをプロセスが残らないように、完全に終了させるためのプラグインです。
 
