@@ -9,70 +9,114 @@
 
 #pragma comment(lib, "shlwapi.lib")
 
-// --- ÉOÉçÅ[ÉoÉãïœêî ---
-char g_plugin_name[] = "äÆëSèIóπ";
-const char* g_window_class_name = "KanzenShuryoMessageWindow";
+#define ID_MENU_EXECUTE_EXIT 1
+
+char g_plugin_name[] = "ÂÆåÂÖ®ÁµÇ‰∫Ü";
+char g_menu_name_execute[] = "‰ªä„Åô„ÅêÂÆüË°å";
+const char* g_window_class_name = "KanzenShuryoFinalMessageWindow";
 HWND g_h_message_window = NULL;
 FILTER* g_fp = NULL;
 
-// --- ÉvÉçÉgÉ^ÉCÉvêÈåæ ---
+int g_timeout_ms = 5000;
+int g_save_log = 1;
+
+char* g_track_name[] = { (char*)"ÁµÇ‰∫ÜÂæÖÊ©üÊôÇÈñì (ms)" };
+int g_track_default[] = { 5000 };
+int g_track_s[] = { 1000 };
+int g_track_e[] = { 30000 };
+
+char* g_check_name[] = { (char*)"„É≠„Ç∞„Çí‰øùÂ≠ò„Åô„Çã" };
+int g_check_default[] = { 1 };
+
 LRESULT CALLBACK MessageOnlyWindowProc(HWND, UINT, WPARAM, LPARAM);
 void start_helper_process(FILTER* fp);
 void write_log(const FILTER* fp, const std::string& message);
 
-// --- èâä˙âªÅEèIóπä÷êî ---
 BOOL func_init(FILTER* fp) {
     g_fp = fp;
+
+    g_timeout_ms = fp->exfunc->ini_load_int(fp, "timeout", g_track_default[0]);
+    g_save_log = fp->exfunc->ini_load_int(fp, "savelog", g_check_default[0]);
+    if (fp->track) fp->track[0] = g_timeout_ms;
+    if (fp->check) fp->check[0] = g_save_log;
+
     HINSTANCE h_inst = fp->dll_hinst;
     WNDCLASSEXA wcex = {};
     wcex.cbSize = sizeof(WNDCLASSEXA);
     wcex.lpfnWndProc = MessageOnlyWindowProc;
     wcex.hInstance = h_inst;
     wcex.lpszClassName = g_window_class_name;
-    if (!RegisterClassExA(&wcex)) { return FALSE; }
-    g_h_message_window = CreateWindowA(g_window_class_name, "KanzenShuryo Message Handler", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, h_inst, NULL);
-    if (!g_h_message_window) { return FALSE; }
-    fp->exfunc->add_menu_item(fp, g_plugin_name, g_h_message_window, ID_MENU_KANZEN_SHURYO, 0, 0);
+    if (!RegisterClassExA(&wcex)) return FALSE;
+    g_h_message_window = CreateWindowA(g_window_class_name, "KanzenShuryo Final Message Handler", 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, h_inst, NULL);
+    if (!g_h_message_window) return FALSE;
+
+    fp->exfunc->add_menu_item(fp, g_menu_name_execute, g_h_message_window, ID_MENU_EXECUTE_EXIT, 'Q', ADD_MENU_ITEM_FLAG_KEY_CTRL | ADD_MENU_ITEM_FLAG_KEY_ALT);
+
     return TRUE;
 }
+
 BOOL func_exit(FILTER* fp) {
-    if (g_h_message_window) { DestroyWindow(g_h_message_window); }
+    if (g_h_message_window) {
+        DestroyWindow(g_h_message_window);
+        g_h_message_window = NULL;
+    }
     UnregisterClassA(g_window_class_name, fp->dll_hinst);
     return TRUE;
 }
 
-// --- ÉÅÉbÉZÅ[ÉWêÍópÉEÉBÉìÉhÉEÉvÉçÉVÅ[ÉWÉÉ ---
 LRESULT CALLBACK MessageOnlyWindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam) {
-    if (message == WM_FILTER_COMMAND && wparam == ID_MENU_KANZEN_SHURYO) {
-        if (g_fp) { start_helper_process(g_fp); }
+    if (message == WM_FILTER_COMMAND && wparam == ID_MENU_EXECUTE_EXIT) {
+        if (g_fp) {
+            start_helper_process(g_fp);
+        }
         return 0;
     }
     return DefWindowProc(hwnd, message, wparam, lparam);
 }
 
-// --- ÉwÉãÉpÅ[ãNìÆÇ∆èIóπèàóù ---
+BOOL func_WndProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam, void* editp, FILTER* fp) {
+    return FALSE;
+}
+
+BOOL func_update(FILTER* fp, int status) {
+    if (fp->track) g_timeout_ms = fp->track[0];
+    if (fp->check) g_save_log = fp->check[0];
+
+    fp->exfunc->ini_save_int(fp, "timeout", g_timeout_ms);
+    fp->exfunc->ini_save_int(fp, "savelog", g_save_log);
+    return TRUE;
+}
+
 void start_helper_process(FILTER* fp) {
-    write_log(fp, "[äÆëSèIóπÉvÉâÉOÉCÉì] é¿çsäJén");
+    write_log(fp, "[ÂÆåÂÖ®ÁµÇ‰∫Ü„Éó„É©„Ç∞„Ç§„É≥] ÂÆüË°åÈñãÂßã");
     wchar_t helper_path[MAX_PATH] = { 0 };
     GetModuleFileNameW(fp->dll_hinst, helper_path, MAX_PATH);
     PathRemoveFileSpecW(helper_path);
     PathAppendW(helper_path, L"KanzenShuryoHelper.exe");
+
     if (!PathFileExistsW(helper_path)) {
-        write_log(fp, "[äÆëSèIóπÉvÉâÉOÉCÉì] ÉGÉâÅ[: é¿çsÉtÉ@ÉCÉãÇ™å©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB");
-        MessageBoxA(GetAncestor(fp->hwnd, GA_ROOT), "KanzenShuryoHelper.exe Ç™å©Ç¬Ç©ÇËÇ‹ÇπÇÒÅB", g_plugin_name, MB_OK | MB_ICONERROR);
+        write_log(fp, "[ÂÆåÂÖ®ÁµÇ‰∫Ü„Éó„É©„Ç∞„Ç§„É≥] „Ç®„É©„Éº: ÂÆüË°å„Éï„Ç°„Ç§„É´„ÅåË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ");
+        MessageBoxA(GetAncestor(fp->hwnd, GA_ROOT), "KanzenShuryoHelper.exe „ÅåË¶ã„Å§„Åã„Çä„Åæ„Åõ„Çì„ÄÇ", g_plugin_name, MB_OK | MB_ICONERROR);
         return;
     }
+
     DWORD pid = GetCurrentProcessId();
-    std::wstring command_line = L"\"" + std::wstring(helper_path) + L"\" " + std::to_wstring(pid);
+    std::wstring command_line = L"\"" + std::wstring(helper_path) + L"\" "
+        + std::to_wstring(pid) + L" "
+        + std::to_wstring(g_timeout_ms) + L" "
+        + std::to_wstring(g_save_log);
+
     std::vector<wchar_t> command_line_vec(command_line.begin(), command_line.end());
     command_line_vec.push_back(0);
+
     STARTUPINFOW si = { sizeof(STARTUPINFOW) };
     PROCESS_INFORMATION pi = {};
+
     if (!CreateProcessW(NULL, command_line_vec.data(), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-        write_log(fp, "[äÆëSèIóπÉvÉâÉOÉCÉì] ÉGÉâÅ[: ÉvÉçÉZÉXÇÃãNìÆÇ…é∏îsÅBÉRÅ[Éh: " + std::to_string(GetLastError()));
+        write_log(fp, "[ÂÆåÂÖ®ÁµÇ‰∫Ü„Éó„É©„Ç∞„Ç§„É≥] „Ç®„É©„Éº: „Éó„É≠„Çª„Çπ„ÅÆËµ∑Âãï„Å´Â§±Êïó„ÄÇ„Ç≥„Éº„Éâ: " + std::to_string(GetLastError()));
     }
     else {
-        write_log(fp, "[äÆëSèIóπÉvÉâÉOÉCÉì] ãNìÆê¨å˜ÅBèIóπÉäÉNÉGÉXÉgÇëóêMÇµÇ‹Ç∑ÅB");
+        write_log(fp, "[ÂÆåÂÖ®ÁµÇ‰∫Ü„Éó„É©„Ç∞„Ç§„É≥] Ëµ∑ÂãïÊàêÂäü„ÄÇÁµÇ‰∫Ü„É™„ÇØ„Ç®„Çπ„Éà„ÇíÈÄÅ‰ø°„Åó„Åæ„Åô„ÄÇ");
         CloseHandle(pi.hProcess);
         CloseHandle(pi.hThread);
         HWND hAviutl = GetAncestor(fp->hwnd, GA_ROOT);
@@ -80,33 +124,36 @@ void start_helper_process(FILTER* fp) {
     }
 }
 
-// --- ÉçÉOèëÇ´çûÇ›ä÷êî ---
 void write_log(const FILTER* fp, const std::string& message) {
+    if (!g_save_log) return;
+
     wchar_t dll_path_w[MAX_PATH] = { 0 };
     GetModuleFileNameW(fp->dll_hinst, dll_path_w, MAX_PATH);
     PathRemoveFileSpecW(dll_path_w);
-    wchar_t log_dir[MAX_PATH] = { 0 };
-    wcscpy_s(log_dir, dll_path_w);
-    PathAppendW(log_dir, L"log");
-    CreateDirectoryW(log_dir, NULL);
-    PathAppendW(log_dir, L"KanzenShuryo.log");
-    std::ofstream ofs(log_dir, std::ios::app);
-    if (ofs) { ofs << message << std::endl; }
+    PathAppendW(dll_path_w, L"KanzenShuryo.log");
+
+    std::ofstream ofs(dll_path_w, std::ios::app);
+    if (ofs) {
+        ofs << message << std::endl;
+    }
 }
 
-// --- ÉtÉBÉãÉ^ÉeÅ[ÉuÉãíËã` ---
 FILTER_DLL g_filter_dll = {
-    FILTER_FLAG_ALWAYS_ACTIVE | FILTER_FLAG_NO_CONFIG,
-    0, 0, g_plugin_name, 0, NULL, NULL, NULL, NULL, 0, NULL, NULL,
-    NULL, func_init, func_exit, NULL, NULL,
-    NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-    NULL, NULL, NULL, NULL, {0},
+    FILTER_FLAG_ALWAYS_ACTIVE,
+    0, 0,
+    g_plugin_name,
+    1, g_track_name, g_track_default, g_track_s, g_track_e,
+    1, g_check_name, g_check_default,
+    NULL,
+    func_init,
+    func_exit,
+    func_update,
+    func_WndProc,
+    NULL, NULL, NULL, 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, {0, 0},
 };
 
-// --- ïKê{ÇÃãÛä÷êîíËã` ---
 extern "C" __declspec(dllexport) FILTER_DLL* GetFilterTable() { return &g_filter_dll; }
 BOOL func_proc(FILTER* fp, FILTER_PROC_INFO* fpip) { return FALSE; }
-BOOL func_update(FILTER* fp, int status) { return FALSE; }
 BOOL func_save_start(FILTER* fp, int s, int e, void* editp) { return TRUE; }
 BOOL func_save_end(FILTER* fp, void* editp) { return TRUE; }
 BOOL func_is_saveframe(FILTER* fp, void* editp, int saveno, int frame, int fps, int edit_flag, int inter) { return TRUE; }
