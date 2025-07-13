@@ -6,20 +6,18 @@
 
 #pragma comment(lib, "shlwapi.lib")
 
-// ƒƒOƒtƒ@ƒCƒ‹‚ÉƒƒbƒZ[ƒW‚ğ‘‚«‚ŞŠÖ”
+bool g_save_log_helper = false;
+
 void write_log(const std::string& message) {
+    if (!g_save_log_helper) return;
+
     wchar_t exe_path_w[MAX_PATH] = { 0 };
     GetModuleFileNameW(NULL, exe_path_w, MAX_PATH);
     PathRemoveFileSpecW(exe_path_w);
 
-    wchar_t log_dir[MAX_PATH] = { 0 };
-    wcscpy_s(log_dir, exe_path_w);
-    PathAppendW(log_dir, L"log");
-    CreateDirectoryW(log_dir, NULL);
+    PathAppendW(exe_path_w, L"KanzenShuryo.log");
 
-    PathAppendW(log_dir, L"KanzenShuryo.log");
-
-    std::ofstream ofs(log_dir, std::ios::app);
+    std::ofstream ofs(exe_path_w, std::ios::app);
     if (ofs) {
         ofs << message << std::endl;
     }
@@ -27,11 +25,9 @@ void write_log(const std::string& message) {
 
 int main(int argc, char* argv[])
 {
-    write_log("--------------------");
-    write_log("[Š®‘SI—¹] ƒvƒƒZƒXŠJn");
-
-    if (argc < 2) {
-        write_log("[Š®‘SI—¹] ƒGƒ‰[: ˆø”(PID)‚ª•s‘«‚µ‚Ä‚¢‚Ü‚·B");
+    if (argc < 4) {
+        g_save_log_helper = true;
+        write_log("[å®Œå…¨çµ‚äº†] ã‚¨ãƒ©ãƒ¼: å¼•æ•°ãŒä¸è¶³ã—ã¦ã„ã¾ã™ã€‚");
         return 1;
     }
 
@@ -40,42 +36,49 @@ int main(int argc, char* argv[])
 
     try {
         aviutl_pid = std::stoul(argv[1]);
-        write_log("[Š®‘SI—¹] ‘ÎÛPID: " + std::to_string(aviutl_pid));
-        write_log("[Š®‘SI—¹] ‘Ò‹@ŠÔ: " + std::to_string(timeout_ms) + "ms");
+        timeout_ms = std::stoi(argv[2]);
+        g_save_log_helper = (std::stoi(argv[3]) == 1);
     }
     catch (...) {
-        write_log("[Š®‘SI—¹] ƒGƒ‰[: ˆø”‚ÌŒ`®‚ª•s³‚Å‚·B");
+        g_save_log_helper = true;
+        write_log("[å®Œå…¨çµ‚äº†] ã‚¨ãƒ©ãƒ¼: å¼•æ•°ã®å½¢å¼ãŒä¸æ­£ã§ã™ã€‚");
         return 1;
     }
+
+    write_log("--------------------");
+    write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹é–‹å§‹");
+    write_log("[å®Œå…¨çµ‚äº†] å¯¾è±¡PID: " + std::to_string(aviutl_pid));
+    write_log("[å®Œå…¨çµ‚äº†] å¾…æ©Ÿæ™‚é–“: " + std::to_string(timeout_ms) + "ms");
+    write_log("[å®Œå…¨çµ‚äº†] ãƒ­ã‚°ä¿å­˜: " + std::string(g_save_log_helper ? "æœ‰åŠ¹" : "ç„¡åŠ¹"));
 
     HANDLE h_aviutl = OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_TERMINATE, FALSE, aviutl_pid);
     if (h_aviutl == NULL) {
-        write_log("[Š®‘SI—¹] ƒGƒ‰[: ƒvƒƒZƒXƒnƒ“ƒhƒ‹‚ÌƒI[ƒvƒ“‚É¸”sBƒR[ƒh: " + std::to_string(GetLastError()));
+        write_log("[å®Œå…¨çµ‚äº†] ã‚¨ãƒ©ãƒ¼: ãƒ—ãƒ­ã‚»ã‚¹ãƒãƒ³ãƒ‰ãƒ«ã®ã‚ªãƒ¼ãƒ—ãƒ³ã«å¤±æ•—ã€‚ã‚³ãƒ¼ãƒ‰: " + std::to_string(GetLastError()));
         return 1;
     }
 
-    write_log("[Š®‘SI—¹] ƒvƒƒZƒXƒnƒ“ƒhƒ‹æ“¾¬Œ÷BI—¹‚ğ‘Ò‹@‚µ‚Ü‚·...");
+    write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹ãƒãƒ³ãƒ‰ãƒ«å–å¾—æˆåŠŸã€‚çµ‚äº†ã‚’å¾…æ©Ÿã—ã¾ã™...");
     DWORD wait_result = WaitForSingleObject(h_aviutl, timeout_ms);
 
     if (wait_result == WAIT_OBJECT_0) {
-        write_log("[Š®‘SI—¹] ƒvƒƒZƒX‚Í³í‚ÉI—¹‚µ‚Ü‚µ‚½B");
+        write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹ã¯æ­£å¸¸ã«çµ‚äº†ã—ã¾ã—ãŸã€‚");
     }
     else if (wait_result == WAIT_TIMEOUT) {
-        write_log("[Š®‘SI—¹] ƒvƒƒZƒX‚ªI—¹‚µ‚Ü‚¹‚ñ‚Å‚µ‚½ (ƒ^ƒCƒ€ƒAƒEƒg)B");
+        write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹ãŒçµ‚äº†ã—ã¾ã›ã‚“ã§ã—ãŸ (ã‚¿ã‚¤ãƒ ã‚¢ã‚¦ãƒˆ)ã€‚");
         DWORD exit_code;
         if (GetExitCodeProcess(h_aviutl, &exit_code) && exit_code == STILL_ACTIVE) {
-            write_log("[Š®‘SI—¹] ƒvƒƒZƒX‚Í‚Ü‚¾ƒAƒNƒeƒBƒu‚Å‚·B‹­§I—¹‚µ‚Ü‚·...");
+            write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹ã¯ã¾ã ã‚¢ã‚¯ãƒ†ã‚£ãƒ–ã§ã™ã€‚å¼·åˆ¶çµ‚äº†ã—ã¾ã™...");
             if (TerminateProcess(h_aviutl, 0)) {
-                write_log("[Š®‘SI—¹] ‹­§I—¹‚É¬Œ÷‚µ‚Ü‚µ‚½B");
+                write_log("[å®Œå…¨çµ‚äº†] å¼·åˆ¶çµ‚äº†ã«æˆåŠŸã—ã¾ã—ãŸã€‚");
             }
             else {
-                write_log("[Š®‘SI—¹] ‹­§I—¹‚É¸”sBƒR[ƒh: " + std::to_string(GetLastError()));
+                write_log("[å®Œå…¨çµ‚äº†] å¼·åˆ¶çµ‚äº†ã«å¤±æ•—ã€‚ã‚³ãƒ¼ãƒ‰: " + std::to_string(GetLastError()));
             }
         }
     }
 
     CloseHandle(h_aviutl);
-    write_log("[Š®‘SI—¹] ƒvƒƒZƒXI—¹");
+    write_log("[å®Œå…¨çµ‚äº†] ãƒ—ãƒ­ã‚»ã‚¹çµ‚äº†");
 
     return 0;
 }
